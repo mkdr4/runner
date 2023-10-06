@@ -6,19 +6,12 @@ import (
 	"sync"
 )
 
-const (
-	colorBlack = iota + 30
-	colorRed
-	colorGreen
-	colorYellow
-	colorBlue
-	colorMagenta
-	colorCyan
-	colorWhite
-
-	colorBold     = 1
-	colorDarkGray = 90
-)
+type Runner interface {
+	Ctx() context.Context
+	AddProcess(int)
+	DoneProcess(string)
+	AwaitStop()
+}
 
 type app struct {
 	ctx  context.Context
@@ -41,9 +34,16 @@ type run struct {
 	stop      stop
 }
 
-type Runner interface {
-	Ctx() context.Context
-	AddProcess(int)
-	DoneProcess()
-	AwaitStop()
-}
+const (
+	colorBlack = iota + 30
+	colorRed
+	colorGreen
+	colorYellow
+	colorBlue
+	colorMagenta
+	colorCyan
+	colorWhite
+
+	colorBold     = 1
+	colorDarkGray = 90
+)

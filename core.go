@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func Setup() Runner {
-	appCtx, appStop := context.WithCancel(context.Background())
+func Setup(mainCtx context.Context) Runner {
+	appCtx, appStop := context.WithCancel(mainCtx)
 
 	return &run{
 		app: app{
@@ -33,29 +33,36 @@ func (r *run) Ctx() context.Context { return r.app.ctx }
 
 func (r *run) AddProcess(i int) { r.processes.wg.Add(i) }
 
-func (r *run) DoneProcess() {
+func (r *run) DoneProcess(processesName string) {
 	if err := recover(); err != nil {
 		r.stop.signal <- os.Interrupt
 		r.processes.wg.Add(1)
-		r.processes.errs <- fmt.Errorf("%v", err)
+		r.processes.errs <- fmt.Errorf("%s: %v", colorize(processesName, colorCyan, true), err)
 	}
 
 	r.processes.wg.Done()
 }
 
 func (r *run) AwaitStop() {
-	<-r.stopSignal()
 	fmt.Printf("%s %s %s\n",
 		colorize(time.Now().Format(time.TimeOnly), colorDarkGray, true),
 		colorize("INF", colorGreen, true),
-		"runner stoped",
+		"runner run",
 	)
+
+	<-r.stopSignal()
 
 	logCtx, logStop := context.WithCancel(context.Background())
 	defer logStop()
 	go r.logErrors(logCtx)
 
 	r.stopApplication()
+
+	fmt.Printf("%s %s %s\n",
+		colorize(time.Now().Format(time.TimeOnly), colorDarkGray, true),
+		colorize("INF", colorGreen, true),
+		"runner stoped",
+	)
 }
 
 func (r *run) stopSignal() chan os.Signal {
@@ -73,11 +80,11 @@ func (r *run) logErrors(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case v := <-r.processes.errs:
+		case err := <-r.processes.errs:
 			fmt.Printf("%s %s %s\n",
 				colorize(time.Now().Format(time.TimeOnly), colorDarkGray, true),
 				colorize("ERR", colorRed, true),
-				colorize(v, colorRed, true),
+				err,
 			)
 			r.processes.wg.Done()
 		}
